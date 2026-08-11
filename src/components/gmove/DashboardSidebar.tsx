@@ -97,6 +97,7 @@ export const DashboardSidebar = ({ groups, activeTab, onTabChange, className }: 
     <aside
       className={cn(
         "fixed inset-y-0 left-0 z-40 bg-background border-r border-border transition-all duration-300 ease-out",
+        "hidden lg:flex",
         sidebarCollapsed ? "w-16" : "w-72",
         className
       )}

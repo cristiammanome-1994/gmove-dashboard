@@ -112,7 +112,7 @@ export const LiveDashboard = ({ data }: Props) => {
   return (
     <>
       <div className="relative min-h-[calc(100vh-200px)]">
-        {/* Sidebar */}
+        {/* Sidebar (desktop only) */}
         <DashboardSidebar
           groups={tabGroups}
           activeTab={activeTab}
@@ -125,7 +125,6 @@ export const LiveDashboard = ({ data }: Props) => {
             "transition-all duration-300",
             "lg:ml-72"
           )}
-          style={{ marginLeft: "0" }}
         >
           <div className="p-4 lg:p-6">
             <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -137,6 +136,27 @@ export const LiveDashboard = ({ data }: Props) => {
                   Período: dia {df} – {dt}
                 </span>
               )}
+            </div>
+
+            {/* Mobile tab navigation */}
+            <div className="lg:hidden mb-4 overflow-x-auto -mx-2 px-2 pb-2">
+              <div className="inline-flex gap-1 bg-muted/60 p-1.5 rounded-2xl">
+                {tabGroups.flatMap(g => g.tabs).map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold transition-all",
+                      activeTab === tab.id
+                        ? "bg-white text-primary shadow-soft"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <tab.icon className="h-3.5 w-3.5" />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Validation Alert Banner */}
