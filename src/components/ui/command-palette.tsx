@@ -102,9 +102,9 @@ export const CommandPalette = ({ items, isOpen, onClose, trigger = "cmd+k" }: Pr
     itemRefs.current[selectedIndex]?.scrollIntoView({ block: "nearest" });
   }, [selectedIndex]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
-  const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  const isMac = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const modLabel = isMac ? "⌘" : "Ctrl";
 
   return createPortal(
@@ -209,6 +209,7 @@ export function useCommandPalette(items: CommandItem[]) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
     const handleKeyDown = (e: KeyboardEvent) => {
       const modKey = isMac ? e.metaKey : e.ctrlKey;
