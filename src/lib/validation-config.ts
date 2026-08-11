@@ -6,7 +6,6 @@ export interface ValidationConfig {
   outlierMultiplier: number;
   maxDurationHours: number;
   maxDistanceKm: number;
-  minCalories: number;
   gapDays: number;
 }
 
@@ -16,7 +15,6 @@ export const DEFAULT_CONFIG: ValidationConfig = {
   outlierMultiplier: 1.5,
   maxDurationHours: 3,
   maxDistanceKm: 50,
-  minCalories: 50,
   gapDays: 7,
 };
 

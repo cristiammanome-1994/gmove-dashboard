@@ -96,6 +96,8 @@ export type TargetMonthCheckIn = {
   duration: number | null;
   title: string | null;
   points: number | null;
+  distance_miles: string | null;
+  calories: number | null;
   check_in_activities: { platform_activity?: string | null }[];
 };
 
@@ -273,6 +275,8 @@ export function processChallenge(data: RawData, opts: ProcessOptions = DEFAULT_O
         duration: c.duration ?? null,
         title: c.title ?? null,
         points: c.points ?? null,
+        distance_miles: (c as RawCheckIn & { distance_miles?: string | null }).distance_miles ?? null,
+        calories: (c as RawCheckIn & { calories?: number | null }).calories ?? null,
         check_in_activities: c.check_in_activities ?? [],
       });
 

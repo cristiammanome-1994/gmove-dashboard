@@ -115,23 +115,6 @@ export const ValidationTab = ({ data }: Props) => {
 
           <div>
             <label className="text-sm font-semibold block mb-2">
-              Calorias Mínimas
-            </label>
-            <input
-              type="number"
-              value={config.minCalories}
-              onChange={e => handleConfigChange('minCalories', e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-              min="0"
-              max="500"
-            />
-            <p className="text-xs text-gray-600 mt-1">
-              Check-ins com menos calorias são suspeitos
-            </p>
-          </div>
-
-          <div>
-            <label className="text-sm font-semibold block mb-2">
               Duração Máxima (horas)
             </label>
             <input
@@ -253,13 +236,16 @@ export const ValidationTab = ({ data }: Props) => {
         )}
       </div>
 
-      {/* Check-ins com menos de 15 minutos */}
+      {/* Check-ins com menos de 30 minutos (total acumulado no dia) */}
       {validation.shortDurationCheckIns.length > 0 && (
         <div className="space-y-3">
           <h3 className="font-semibold text-lg flex items-center gap-2">
             <Clock className="w-5 h-5 text-yellow-500" />
-            {validation.shortDurationCheckIns.length} check-in(s) com menos de 15 minutos
+            {validation.shortDurationCheckIns.length} check-in(s) com menos de 30 minutos no dia
           </h3>
+          <p className="text-sm text-muted-foreground">
+            Validação por total acumulado no dia. Check-ins de corrida/caminhada com 2km+ são válidos individualmente.
+          </p>
           <div className="rounded-xl border border-border overflow-hidden">
             <Table>
               <TableHeader>
@@ -267,7 +253,10 @@ export const ValidationTab = ({ data }: Props) => {
                   <TableHead>Participante</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead>Título</TableHead>
-                  <TableHead className="text-right">Duração</TableHead>
+                  <TableHead className="text-right">Duração check-in</TableHead>
+                  <TableHead className="text-right">Total no dia</TableHead>
+                  <TableHead className="text-right">Distância (km)</TableHead>
+                  <TableHead>Atividades</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -280,6 +269,36 @@ export const ValidationTab = ({ data }: Props) => {
                       <Badge className="bg-yellow-100 text-yellow-700 border-0">
                         {ci.duration} min
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge
+                        className={
+                          ci.dailyTotalDuration >= 30
+                            ? "bg-green-100 text-green-700 border-0"
+                            : "bg-red-100 text-red-700 border-0"
+                        }
+                      >
+                        {ci.dailyTotalDuration} min
+                        {ci.isDailyTotal && <span className="ml-1 text-xs">Σ</span>}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {ci.distanceKm ? (
+                        <span className="font-mono">{ci.distanceKm.toFixed(2)}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {ci.activities.length > 0 ? (
+                        ci.activities.map((a, i) => (
+                          <Badge key={i} variant="secondary" className="mr-1 mb-1 text-xs">
+                            {a}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

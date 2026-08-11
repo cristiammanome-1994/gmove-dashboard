@@ -1,9 +1,11 @@
 import { useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RankBadge, Initials } from "../RankBadge";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { SearchX, Inbox, FilterX, Upload, AlertCircle } from "lucide-react";
 
 export const TONES = [
   "hsl(var(--primary))", "hsl(var(--primary-glow))", "hsl(140 60% 45%)",
@@ -87,6 +89,52 @@ export const Counter = ({ shown, total }: { shown: number; total: number }) => (
   </p>
 );
 
+interface EmptyStateProps {
+  variant?: "no-results" | "no-data" | "error";
+  title: string;
+  description?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}
+
+export const EmptyState = ({
+  variant = "no-results",
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: EmptyStateProps) => {
+  const Icon = variant === "no-results" ? SearchX : variant === "error" ? AlertCircle : Inbox;
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 text-center max-w-sm mx-auto">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+        <Icon className="h-7 w-7" aria-hidden="true" />
+      </div>
+      <div>
+        <p className="font-semibold text-foreground">{title}</p>
+        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+      </div>
+      {actionLabel && onAction && (
+        <Button variant="outline" size="sm" onClick={onAction}>
+          {variant === "no-results" ? <FilterX className="mr-2 h-4 w-4" /> : <Upload className="mr-2 h-4 w-4" />}
+          {actionLabel}
+        </Button>
+      )}
+    </div>
+  );
+};
+
+export const DataEmptyState = ({ onUpload }: { onUpload?: () => void }) => (
+  <EmptyState
+    variant="no-data"
+    title="Ainda não há dados para exibir"
+    description="Carregue o arquivo challenge-data.json para começar a análise."
+    actionLabel={onUpload ? "Carregar dados" : undefined}
+    onAction={onUpload}
+  />
+);
+
 export interface Col {
   h: string;
   k: (p: any) => React.ReactNode;
@@ -125,8 +173,12 @@ export const RankingTable = ({
         ))}
         {rows.length === 0 && (
           <TableRow>
-            <TableCell colSpan={cols.length + 2} className="text-center py-10 text-muted-foreground">
-              Nenhum participante encontrado.
+            <TableCell colSpan={cols.length + 2} className="text-center py-12">
+              <EmptyState
+                variant="no-results"
+                title="Nenhum participante encontrado"
+                description="Tente ajustar a busca ou limpar os filtros para ver todos os participantes."
+              />
             </TableCell>
           </TableRow>
         )}

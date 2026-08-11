@@ -23,7 +23,17 @@ export interface ValidationResult {
   suspicious: SuspiciousCheckIn[];
   byReason: Record<string, number>;
   bySeverity: Record<'low' | 'medium' | 'high', number>;
-  shortDurationCheckIns: { id: number; participant: string; date: string; duration: number; title: string | null }[];
+  shortDurationCheckIns: {
+    id: number;
+    participant: string;
+    date: string;
+    duration: number;
+    dailyTotalDuration: number;
+    title: string | null;
+    distanceKm: number | null;
+    activities: string[];
+    isDailyTotal: boolean;
+  }[];
 }
 
 export function validateCheckIns(data: ProcessedDashboard | null): ValidationResult {
@@ -47,8 +57,8 @@ export function validateCheckIns(data: ProcessedDashboard | null): ValidationRes
   // 2. Detectar outliers de calorias
   suspicious.push(...detectOutliers(data, config));
 
-  // 3. Detectar check-ins individuais com < 15 min
-  const shortDurationCheckIns = detectShortDurationCheckIns(data, 15);
+  // 3. Detectar check-ins individuais com < 30 min (exceção: corrida/caminhada >= 2km)
+  const shortDurationCheckIns = detectShortDurationCheckIns(data, 30);
 
   // 4. Contar por razão
   const byReason: Record<string, number> = {};
@@ -74,18 +84,150 @@ export function validateCheckIns(data: ProcessedDashboard | null): ValidationRes
 function detectShortDurationCheckIns(
   data: ProcessedDashboard,
   threshold: number
-): { id: number; participant: string; date: string; duration: number; title: string | null }[] {
-  if (!data.targetMonthCheckIns) return [];
-  return data.targetMonthCheckIns
-    .filter(ci => ci.duration !== null && ci.duration < threshold)
-    .map(ci => ({
-      id: ci.id,
-      participant: ci.memberName,
-      date: new Date(ci.occurred_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
-      duration: ci.duration!,
-      title: ci.title,
-    }))
-    .sort((a, b) => a.duration - b.duration);
+): {
+  id: number;
+  participant: string;
+  date: string;
+  duration: number;
+  dailyTotalDuration: number;
+  title: string | null;
+  distanceKm: number | null;
+  activities: string[];
+  isDailyTotal: boolean;
+}[] {
+  if (!data.targetMonthCheckIns || data.targetMonthCheckIns.length === 0) return [];
+
+  // 1. Group check-ins by participant + date
+  const dayKey = (ci: { occurred_at: string }) => {
+    const d = new Date(ci.occurred_at);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  type DayGroup = {
+    key: string;
+    participant: string;
+    checkIns: typeof data.targetMonthCheckIns;
+    totalDuration: number;
+    totalDistanceKm: number | null;
+    checkHasException: boolean;
+  };
+
+  const dayGroups = new Map<string, DayGroup>();
+
+  for (const ci of data.targetMonthCheckIns) {
+    if (ci.duration === null) continue;
+
+    const key = `${ci.account_id}_${dayKey(ci)}`;
+    let group = dayGroups.get(key);
+    if (!group) {
+      group = {
+        key,
+        participant: ci.memberName,
+        checkIns: [],
+        totalDuration: 0,
+        totalDistanceKm: null,
+        checkHasException: false,
+      };
+      dayGroups.set(key, group);
+    }
+    group.checkIns.push(ci);
+    group.totalDuration += ci.duration;
+
+    // Sum distance
+    let distKm: number | null = null;
+    if (ci.distance_miles) {
+      const miles = parseFloat(ci.distance_miles.replace(',', '.'));
+      distKm = miles * 1.60934;
+    } else if (ci.check_in_activities) {
+      for (const activity of ci.check_in_activities) {
+        const act = activity as { distance_miles?: string | null };
+        if (act.distance_miles) {
+          const miles = parseFloat(act.distance_miles.replace(',', '.'));
+          distKm = miles * 1.60934;
+          break;
+        }
+      }
+    }
+    if (distKm !== null) {
+      group.totalDistanceKm = (group.totalDistanceKm ?? 0) + distKm;
+    }
+
+    // Check if individual check-in qualifies for running/walking ≥ 2km exception
+    if (!group.checkHasException) {
+      const activities = ci.check_in_activities
+        ?.map((a: { platform_activity?: string | null }) => a.platform_activity)
+        .filter((a: string | null | undefined) => a != null) ?? [];
+      const isRunningOrWalking = activities.some((a: string) =>
+        a === 'running' || a === 'walking' || a === 'treadmill'
+      );
+      if (isRunningOrWalking && distKm !== null && distKm >= 2) {
+        group.checkHasException = true;
+      }
+    }
+  }
+
+  // 2. Find days with total duration < threshold and no exception
+  const flaggedDayKeys = new Set<string>();
+  for (const group of dayGroups.values()) {
+    if (group.totalDuration < threshold && !group.checkHasException) {
+      flaggedDayKeys.add(group.key);
+    }
+  }
+
+  // 3. Return all check-ins from flagged days
+  const result: {
+    id: number;
+    participant: string;
+    date: string;
+    duration: number;
+    dailyTotalDuration: number;
+    title: string | null;
+    distanceKm: number | null;
+    activities: string[];
+    isDailyTotal: boolean;
+  }[] = [];
+
+  for (const [key, group] of dayGroups) {
+    if (!flaggedDayKeys.has(key)) continue;
+
+    for (const ci of group.checkIns) {
+      let distanceKm: number | null = null;
+      if (ci.distance_miles) {
+        const miles = parseFloat(ci.distance_miles.replace(',', '.'));
+        distanceKm = miles * 1.60934;
+      } else if (ci.check_in_activities) {
+        for (const activity of ci.check_in_activities) {
+          const act = activity as { distance_miles?: string | null };
+          if (act.distance_miles) {
+            const miles = parseFloat(act.distance_miles.replace(',', '.'));
+            distanceKm = miles * 1.60934;
+            break;
+          }
+        }
+      }
+
+      const activities = ci.check_in_activities
+        ?.map((a: { platform_activity?: string | null }) => a.platform_activity)
+        .filter((a: string | null | undefined) => a != null) ?? [];
+
+      result.push({
+        id: ci.id,
+        participant: ci.memberName,
+        date: new Date(ci.occurred_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
+        duration: ci.duration!,
+        dailyTotalDuration: group.totalDuration,
+        title: ci.title,
+        distanceKm,
+        activities,
+        isDailyTotal: group.checkIns.length > 1,
+      });
+    }
+  }
+
+  // Sort by daily total duration (ascending), then by individual duration
+  return result.sort((a, b) =>
+    a.dailyTotalDuration - b.dailyTotalDuration || a.duration - b.duration
+  );
 }
 
 function detectShortDuration(
@@ -143,19 +285,6 @@ function detectOutliers(
         severity: 'medium' as const,
         value: { calories: p.points },
         suggestion: `Pontos ${p.points} > limite ${Math.round(upper)}. Verificar validade dos check-ins.`,
-      });
-    }
-
-    // Outlier muito baixo
-    if (p.points < config.minCalories && p.points > 0) {
-      result.push({
-        id: `outlier_low_${p.id}`,
-        participant: p.name,
-        date: 'Vários',
-        reason: ['outlier_low'],
-        severity: 'low' as const,
-        value: { calories: p.points },
-        suggestion: `Pontos ${p.points} < mínimo ${config.minCalories}. Pode ser erro de entrada.`,
       });
     }
   });
