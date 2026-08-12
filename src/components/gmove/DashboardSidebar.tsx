@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight, Calendar, Flame, TrendingUp, Activity, Clock, Video as VideoIcon, Users, Trophy, AlertTriangle, Image, ListChecks, LayoutDashboard, BarChart2, ShieldCheck, Users as UsersIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -75,12 +75,46 @@ interface Props {
   groups: TabGroup[];
   activeTab: string;
   onTabChange: (tabId: string) => void;
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
   className?: string;
 }
 
-export const DashboardSidebar = ({ groups, activeTab, onTabChange, className }: Props) => {
+export const DashboardSidebar = ({ 
+  groups, 
+  activeTab, 
+  onTabChange, 
+  collapsed = false,
+  onCollapsedChange,
+  className 
+}: Props) => {
+  const [isMounted, setIsMounted] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(collapsed);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setSidebarCollapsed(collapsed);
+  }, [collapsed]);
+
+  if (!isMounted) {
+    return (
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 bg-background border-r border-border transition-all duration-300 ease-out",
+          "hidden lg:flex",
+          collapsed ? "w-16" : "w-72",
+          className
+        )}
+        aria-label="Navegação do dashboard"
+      >
+        <div className="flex h-full flex-col" />
+      </aside>
+    );
+  }
 
   const toggleGroup = (groupId: string) => {
     const newSet = new Set(collapsedGroups);
