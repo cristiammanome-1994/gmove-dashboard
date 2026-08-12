@@ -101,6 +101,13 @@ export const LiveDashboard = ({ data }: Props) => {
 
   const { isOpen, setIsOpen } = useCommandPalette(commandItems);
 
+  const totalDaysInMonth = data?.options
+    ? new Date(data.options.year, data.options.month, 0).getDate()
+    : 31;
+  const df = data?.options?.dayFrom ?? 1;
+  const dt = data?.options?.dayTo ?? totalDaysInMonth;
+  const hasWindow = df > 1 || dt < totalDaysInMonth;
+
   if (!data || !data.summary) {
     return (
       <div className="rounded-2xl border border-border bg-gradient-card p-10 text-center text-muted-foreground">
