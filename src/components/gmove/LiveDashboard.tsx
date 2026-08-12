@@ -84,7 +84,7 @@ export const LiveDashboard = ({ data }: Props) => {
       icon: Search,
       group: "⚡ Ações rápidas",
       shortcut: "R",
-      action: () => window.location.reload(),
+      action: () => typeof window !== "undefined" && window.location.reload(),
       keywords: ["recarregar", "atualizar", "refresh", "reload"],
     },
     {
