@@ -12,6 +12,16 @@ dist
 dist-ssr
 *.local
 
+# Lock files - keep only package-lock.json
+bun.lockb
+yarn.lock
+pnpm-lock.yaml
+
+# Test output
+coverage
+test_output.txt
+test_error.txt
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +32,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
